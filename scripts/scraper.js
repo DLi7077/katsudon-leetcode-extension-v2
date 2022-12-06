@@ -26,6 +26,34 @@ const classes = {
     "px-3 py-1.5 font-medium items-center whitespace-nowrap transition-all focus:outline-none inline-flex text-label-r bg-green-s dark:bg-dark-green-s hover:bg-green-3 dark:hover:bg-dark-green-3 rounded-lg",
   loadingRect: "animate-pulse flex w-full flex-col space-y-4",
 };
+
+const constants = {
+  scriptData: () => {
+    return Utils.get(
+      JSON.parse(document.getElementById("__NEXT_DATA__").innerText),
+      "props.pageProps.dehydratedState.queries"
+    );
+  },
+  problemInfo: () => {
+    const problemInfoIdx = 0;
+
+    const problem = Utils.get(
+      constants.scriptData()[problemInfoIdx],
+      "state.data.question"
+    );
+    return {
+      id: problem.questionFrontendId,
+      title: problem.title,
+      title_slug: problem.titleSlug,
+      difficulty: problem.difficulty,
+      premium: problem.isPaidOnly,
+    };
+  },
+  starterCode: (language) => {
+    const startingCodeIdx = 2;
+  },
+};
+
 function validateSubmit(targetElement) {
   return targetElement.innerText === "Submit";
 }
@@ -58,9 +86,10 @@ async function awaitSubmission(scrapeFunction) {
   }
 }
 
-function retrieveSolutionFromLocalStorage(problemId, solutionLanguge) {
+function retrieveSolutionFromLocalStorage(problemId, solutionLanguage) {
   const localStorageKeys = Object.keys(localStorage);
-  const solutionRegex = new RegExp(`^${problemId}.+(?<!(updated-time))$`);
+  const solutionRegex = new RegExp(`^${problemId}.+${solutionLanguage}$`);
+  console.log(solutionRegex);
 
   // https://stackoverflow.com/a/43825436
   const solutionKey = localStorageKeys.find((key) => solutionRegex.test(key));
@@ -68,18 +97,19 @@ function retrieveSolutionFromLocalStorage(problemId, solutionLanguge) {
 }
 
 function scrapeSubmisison() {
-  const scriptData = JSON.parse(
-    document.getElementById("__NEXT_DATA__").innerText
-  );
-  const problemQuery = Utils.get(
-    scriptData,
-    "props.pageProps.dehydratedState.queries"
-  )[0];
-  const problemId = Utils.get(problemQuery, "state.data.question.questionId");
+  const problemId = Utils.get(constants.problemInfo(), "id");
+  const solutionBlockLanguage = document
+    .querySelector("[data-mode-id]")
+    .getAttribute("data-mode-id");
 
   // retrieve code submission from localStorage
-  const solution = retrieveSolutionFromLocalStorage(problemId);
-  console.log(solution)
+  const solution = retrieveSolutionFromLocalStorage(
+    problemId,
+    solutionBlockLanguage
+  );
+
+  console.log(solution);
+  console.log(solutionBlockLanguage);
   return solution;
 }
 

@@ -4,6 +4,12 @@
 //   fail: some error exists
 //   success: some time space text will show up
 
+// predicted leetcode logic flow
+// user submit
+// compile and run
+// if fail: show error and save contents to local storage
+// if pass: go to submission tab and display runtime/memory - does not save to localStorage
+
 const Utils = {
   get: (object, path) => {
     const chainedKeys = path.split(".");
@@ -32,9 +38,11 @@ const classes = {
   sumbitButton:
     "px-3 py-1.5 font-medium items-center whitespace-nowrap transition-all focus:outline-none inline-flex text-label-r bg-green-s dark:bg-dark-green-s hover:bg-green-3 dark:hover:bg-dark-green-3 rounded-lg",
   loadingRect: "animate-pulse flex w-full flex-col space-y-4",
+  errorResult: "text-xl font-medium text-red-s dark:text-dark-red-s",
 };
 
 const constants = {
+  intervalTick: 400, //ms
   scriptData: () => {
     return Utils.get(
       JSON.parse(document.getElementById("__NEXT_DATA__").innerText),
@@ -78,19 +86,17 @@ function validateSubmit(targetElement) {
 
 /**
  * @description Waits for leetcode to process the solution and calls the scraper after
- * @param {void} scrapeFunction The next function to call - the scraper
+ * @param {void} next The next function to call
  * @returns nothing
  */
 let awaitSubmissionInterval = null; // global submission status
-async function awaitSubmission(scrapeFunction) {
+async function awaitSubmission() {
   if (!!awaitSubmissionInterval) {
     Utils.warn("Katsudon: already submitting");
     return;
   }
-  const intervalTick = 300; //ms
-  const isLoading = () => {
-    return !!document.getElementsByClassName(classes.loadingRect).length;
-  };
+  const isLoading = () =>
+    !!document.getElementsByClassName(classes.loadingRect).length;
 
   if (!awaitSubmissionInterval) {
     // wait for leetcode to process the solution (loading rectangles)
@@ -98,20 +104,59 @@ async function awaitSubmission(scrapeFunction) {
       if (!isLoading()) {
         clearInterval(awaitSubmissionInterval);
         awaitSubmissionInterval = null;
-        scrapeFunction();
+        checkFailed();
       }
-    }, intervalTick);
+    }, constants.intervalTick);
   }
+}
+
+/**
+ * @description waits for the successful submission to resolve
+ * @param {void} createSolution callback to solution creater
+ * @returns {void} next function to call
+ */
+let awaitSolutionInterval;
+async function awaitPassedSolution() {
+  Utils.info("waiting for it to render");
+  const codeBlockExists = () => !!document.querySelector("pre");
+
+  if (!awaitSolutionInterval) {
+    awaitSolutionInterval = setInterval(() => {
+      if (codeBlockExists()) {
+        clearInterval(awaitSolutionInterval);
+        awaitSolutionInterval = null;
+        handleSubmit(createPassedSolution());
+      }
+    }, constants.intervalTick);
+  }
+}
+
+/**
+ * @description retrieves the submission result
+ * @returns an object representing the result containing errors/runtime/memory
+ */
+async function checkFailed() {
+  // Check for TLE, MLE, Compile Error, Runtime Error, and Wrong Answer
+  const [errorTag] = document.getElementsByClassName(classes.errorResult);
+  const failed = !!errorTag;
+  const failedObject = {
+    failed: failed,
+    error: failed ? errorTag.innerText : null,
+  };
+
+  return await scrapeSubmission(failedObject);
 }
 
 /**
  * @description retrieve solution from localStorage
  * If it does not exist, then it should be in the scriptData as the starting code
- * @param {string} problemId
- * @param {string} solutionLanguage
  * @returns the solution from submission
  */
-function retrieveSolution(problemId, solutionLanguage) {
+function createFailedSolution() {
+  const problemId = Utils.get(constants.problemInfo(), "id");
+  const solutionLanguage = document
+    .querySelector("[data-mode-id]")
+    .getAttribute("data-mode-id");
   const localStorageKeys = Object.keys(localStorage);
   const solutionRegex = new RegExp(`^${problemId}.+${solutionLanguage}$`);
 
@@ -119,23 +164,31 @@ function retrieveSolution(problemId, solutionLanguage) {
   const solutionKey = localStorageKeys.find((key) => solutionRegex.test(key));
 
   // send starter code if solution not saved
-  return (
-    localStorage.getItem(solutionKey) ?? constants.starterCode(solutionLanguage)
-  );
-}
-
-function scrapeSubmission() {
-  const problemId = Utils.get(constants.problemInfo(), "id");
-  const solutionBlockLanguage = document
-    .querySelector("[data-mode-id]")
-    .getAttribute("data-mode-id");
-
-  // retrieve code submission from localStorage
-  const solution = retrieveSolution(problemId, solutionBlockLanguage);
+  const solution = !!localStorage.getItem(solutionKey)
+    ? localStorage.getItem(solutionKey).slice(1, -1)
+    : constants.starterCode(solutionLanguage);
 
   Utils.info(solution);
-  Utils.info(solutionBlockLanguage);
   return solution;
+}
+
+function createPassedSolution() {
+  const solution = document.querySelector("pre").innerText;
+  return solution;
+}
+
+async function scrapeSubmission(failedObject) {
+  // if submission failed, it will be saved to localStorage
+  // retrieve code submission from localStorage
+  const { failed } = failedObject;
+
+  const scrapeSolution = failed ? createFailedSolution : awaitPassedSolution;
+
+  await scrapeSolution()
+}
+
+async function handleSubmit(solution) {
+  console.log("retreived ", solution);
 }
 
 async function submissionLifeCycle(e) {
@@ -143,7 +196,7 @@ async function submissionLifeCycle(e) {
     Utils.info("not submit button");
     return;
   }
-  await awaitSubmission(scrapeSubmission);
+  await awaitSubmission();
 }
 
-document.addEventListener("click", submissionLifeCycle);
+document.addEventListener("click", async (e) => await submissionLifeCycle(e));

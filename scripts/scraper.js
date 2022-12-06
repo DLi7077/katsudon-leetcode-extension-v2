@@ -22,22 +22,17 @@ function validateSubmit(targetElement) {
  */
 let awaitSubmissionInterval; // global submission status
 async function awaitSubmission() {
-  console.log("clicked");
-
-  const isLoading = () => {
-    console.log(document.getElementsByClassName(loadingRectClass));
-    return !!document.getElementsByClassName(loadingRectClass).length;
-  };
-
   const intervalTick = 300; //ms
+  const isLoading = () => {
+    return !!document.getElementsByClassName(classes.loadingRectClass).length;
+  };
 
   if (!awaitSubmissionInterval) {
     // wait for leetcode to process the solution (loading rectangles)
     awaitSubmissionInterval = setInterval(() => {
       if (!isLoading()) {
-        console.log("processed");
         clearInterval(awaitSubmissionInterval);
-        nIntervId = null;
+        awaitSubmissionInterval = null;
         return true;
       }
     }, intervalTick);

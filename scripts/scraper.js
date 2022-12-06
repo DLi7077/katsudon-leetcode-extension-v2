@@ -4,14 +4,13 @@
 //   fail: some error exists
 //   success: some time space text will show up
 
-console.log("Loaded");
 const Utils = {
   get: (object, path) => {
     const chainedKeys = path.split(".");
     let result = object;
     for (const key of chainedKeys) {
       if (!result[key]) {
-        console.log(`invalid key ${key}`);
+        Utils.info(`invalid key ${key}`);
         return null;
       }
       result = result[key];
@@ -19,7 +18,15 @@ const Utils = {
 
     return result;
   },
+  warn: (...params) => {
+    console.warn("Katsudon: ", ...params);
+  },
+  info: (...params) => {
+    console.log("Katsudon: ", ...params);
+  },
 };
+
+Utils.info("Loaded");
 
 const classes = {
   sumbitButton:
@@ -51,6 +58,17 @@ const constants = {
   },
   starterCode: (language) => {
     const startingCodeIdx = 2;
+    const starterCodes = Utils.get(
+      constants.scriptData()[startingCodeIdx],
+      "state.data.question.codeSnippets"
+    );
+
+    const solution = Utils.get(
+      starterCodes.find((code) => code.langSlug === language),
+      "code"
+    );
+
+    return solution;
   },
 };
 
@@ -66,7 +84,7 @@ function validateSubmit(targetElement) {
 let awaitSubmissionInterval = null; // global submission status
 async function awaitSubmission(scrapeFunction) {
   if (!!awaitSubmissionInterval) {
-    console.warn("Katsudon: already submitting");
+    Utils.warn("Katsudon: already submitting");
     return;
   }
   const intervalTick = 300; //ms
@@ -86,39 +104,46 @@ async function awaitSubmission(scrapeFunction) {
   }
 }
 
-function retrieveSolutionFromLocalStorage(problemId, solutionLanguage) {
+/**
+ * @description retrieve solution from localStorage
+ * If it does not exist, then it should be in the scriptData as the starting code
+ * @param {string} problemId
+ * @param {string} solutionLanguage
+ * @returns the solution from submission
+ */
+function retrieveSolution(problemId, solutionLanguage) {
   const localStorageKeys = Object.keys(localStorage);
   const solutionRegex = new RegExp(`^${problemId}.+${solutionLanguage}$`);
-  console.log(solutionRegex);
 
   // https://stackoverflow.com/a/43825436
   const solutionKey = localStorageKeys.find((key) => solutionRegex.test(key));
-  return localStorage.getItem(solutionKey);
+
+  // send starter code if solution not saved
+  return (
+    localStorage.getItem(solutionKey) ?? constants.starterCode(solutionLanguage)
+  );
 }
 
-function scrapeSubmisison() {
+function scrapeSubmission() {
   const problemId = Utils.get(constants.problemInfo(), "id");
   const solutionBlockLanguage = document
     .querySelector("[data-mode-id]")
     .getAttribute("data-mode-id");
 
   // retrieve code submission from localStorage
-  const solution = retrieveSolutionFromLocalStorage(
-    problemId,
-    solutionBlockLanguage
-  );
+  const solution = retrieveSolution(problemId, solutionBlockLanguage);
 
-  console.log(solution);
-  console.log(solutionBlockLanguage);
+  Utils.info(solution);
+  Utils.info(solutionBlockLanguage);
   return solution;
 }
 
 async function submissionLifeCycle(e) {
   if (!validateSubmit(e.target)) {
-    console.log("not submit button");
+    Utils.info("not submit button");
     return;
   }
-  await awaitSubmission(scrapeSubmisison);
+  await awaitSubmission(scrapeSubmission);
 }
 
 document.addEventListener("click", submissionLifeCycle);

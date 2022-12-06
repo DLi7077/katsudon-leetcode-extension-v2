@@ -1,0 +1,12 @@
+{
+  "manifest_version": 3,
+  "name": "Katsudon LC Extension v2",
+  "version": "1.0",
+  "description": "Webscraper to send leetcode submissions to Katsudon DB",
+  "content_scripts": [
+    {
+      "js": ["scripts/scraper.js"],
+      "matches": ["https://leetcode.com/problems/*"]
+    }
+  ]
+}

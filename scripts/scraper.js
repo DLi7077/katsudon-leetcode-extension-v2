@@ -6,11 +6,11 @@
 
 console.log("Loaded");
 
-const sumbitButtonClass =
-  "px-3 py-1.5 font-medium items-center whitespace-nowrap transition-all focus:outline-none inline-flex text-label-r bg-green-s dark:bg-dark-green-s hover:bg-green-3 dark:hover:bg-dark-green-3 rounded-lg";
-
-const loadingRectClass = "animate-pulse flex w-full flex-col space-y-4";
-
+const classes = {
+  sumbitButtonClass:
+    "px-3 py-1.5 font-medium items-center whitespace-nowrap transition-all focus:outline-none inline-flex text-label-r bg-green-s dark:bg-dark-green-s hover:bg-green-3 dark:hover:bg-dark-green-3 rounded-lg",
+  loadingRectClass: "animate-pulse flex w-full flex-col space-y-4",
+};
 function validateSubmit(targetElement) {
   return targetElement.innerText === "Submit";
 }
@@ -20,7 +20,6 @@ function validateSubmit(targetElement) {
  * @param {void} nextFunction The next function to call - the scraper
  * @returns nothing
  */
-
 let awaitSubmissionInterval; // global submission status
 async function awaitSubmission() {
   console.log("clicked");
@@ -43,12 +42,17 @@ async function awaitSubmission() {
       }
     }, intervalTick);
   }
+
+  return false;
 }
 
 async function submissionLifeCycle(e) {
   if (!validateSubmit(e.target)) {
-    console.log(e.target);
     console.log("not submit button");
+    return;
+  }
+  if (!(await awaitSubmission())) {
+    console.log("already processing");
     return;
   }
 }

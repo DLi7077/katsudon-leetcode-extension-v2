@@ -39,6 +39,10 @@ const classes = {
     "px-3 py-1.5 font-medium items-center whitespace-nowrap transition-all focus:outline-none inline-flex text-label-r bg-green-s dark:bg-dark-green-s hover:bg-green-3 dark:hover:bg-dark-green-3 rounded-lg",
   loadingRect: "animate-pulse flex w-full flex-col space-y-4",
   errorResult: "text-xl font-medium text-red-s dark:text-dark-red-s",
+  languageLabel: "text-xs text-label-2 dark:text-dark-label-2",
+  solutionStats: "text-label-1 dark:text-dark-label-1 ml-2 font-medium",
+  submittedLanguages:
+    "inline-flex items-center whitespace-nowrap text-xs rounded-full bg-blue-0 dark:bg-dark-blue-0 text-blue-s dark:text-dark-blue-s px-3 py-1 font-medium leading-4",
 };
 
 const constants = {
@@ -152,7 +156,7 @@ async function checkFailed() {
  * If it does not exist, then it should be in the scriptData as the starting code
  * @returns the solution from submission
  */
-function createFailedSolution() {
+async function createFailedSolution() {
   const problemId = Utils.get(constants.problemInfo(), "id");
   const solutionLanguage = document
     .querySelector("[data-mode-id]")
@@ -169,12 +173,40 @@ function createFailedSolution() {
     : constants.starterCode(solutionLanguage);
 
   Utils.info(solution);
-  return solution;
+  const [solutionLanguageLabel] = document.getElementsByClassName(
+    classes.submittedLanguages
+  );
+
+  const solutionObject = {
+    problem_id: problemId,
+    solution_language: solutionLanguageLabel,
+    solution: solution,
+    failed: true,
+    runtime_ms: null,
+    memory_usage_mb: null,
+  };
+  return await handleSubmit(solutionObject);
 }
 
 function createPassedSolution() {
   const solution = document.querySelector("pre").innerText;
-  return solution;
+  const tags = Array.from(
+    document.getElementsByClassName(classes.solutionStats)
+  );
+  const [runtime, memory] = tags.map((tag) => tag.innerText.split(" ")[0]);
+
+  const firstSolutionLanguage = document.getElementsByClassName(
+    classes.submittedLanguages
+  )[0].innerText;
+
+  const solutionObject = {
+    solution_language: firstSolutionLanguage,
+    solution: solution,
+    failed: false,
+    runtime_ms: runtime,
+    memory_usage_mb: memory,
+  };
+  return solutionObject;
 }
 
 async function scrapeSubmission(failedObject) {
@@ -184,7 +216,7 @@ async function scrapeSubmission(failedObject) {
 
   const scrapeSolution = failed ? createFailedSolution : awaitPassedSolution;
 
-  await scrapeSolution()
+  await scrapeSolution();
 }
 
 async function handleSubmit(solution) {

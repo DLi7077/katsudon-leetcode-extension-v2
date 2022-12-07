@@ -32,8 +32,6 @@ const Utils = {
   },
 };
 
-Utils.info("Loaded");
-
 const classes = {
   sumbitButton:
     "px-3 py-1.5 font-medium items-center whitespace-nowrap transition-all focus:outline-none inline-flex text-label-r bg-green-s dark:bg-dark-green-s hover:bg-green-3 dark:hover:bg-dark-green-3 rounded-lg",
@@ -121,7 +119,6 @@ async function awaitSubmission() {
  */
 let awaitSolutionInterval;
 async function awaitPassedSolution() {
-  Utils.info("waiting for it to render");
   const codeBlockExists = () => !!document.querySelector("pre");
 
   if (!awaitSolutionInterval) {
@@ -172,7 +169,6 @@ async function createFailedSolution() {
     ? localStorage.getItem(solutionKey).slice(1, -1)
     : constants.starterCode(solutionLanguage);
 
-  Utils.info(solution);
   const [solutionLanguageLabel] = document.getElementsByClassName(
     classes.submittedLanguages
   );
@@ -219,15 +215,15 @@ async function scrapeSubmission(failedObject) {
   await scrapeSolution();
 }
 
+// TODO: send to katsudon
 async function handleSubmit(solution) {
-  console.log("retreived ", solution);
+  Utils.info("retreived ", solution);
 }
 
 async function submissionLifeCycle(e) {
-  if (!validateSubmit(e.target)) {
-    Utils.info("not submit button");
-    return;
-  }
+  if (!validateSubmit(e.target)) return;
+
+  Utils.info("submitting...");
   await awaitSubmission();
 }
 
